@@ -1,5 +1,6 @@
 package com.example.michiel.myreminderdemo;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -24,6 +25,11 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter mAdapter;
     private ListView mListView;
     private EditText mNewReminderText;
+
+    //Constants used when calling the detail activity
+    public static final String INTENT_DETAIL_ROW_NUMBER = "Row number";
+    public static final String INTENT_DETAIL_REMINDER_TEXT = "Reminder text";
+    public static final int REQUESTCODE = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +56,25 @@ public class MainActivity extends AppCompatActivity {
                 updateUI();
                 return true;
             }
+
+
+
         });
+
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+
+                Reminder clickedReminder = (Reminder) adapterView.getItemAtPosition(i);
+
+                Intent intent = new Intent(MainActivity.this, UpdateActivity.class);
+                intent.putExtra(INTENT_DETAIL_ROW_NUMBER, i);
+                intent.putExtra(INTENT_DETAIL_REMINDER_TEXT, clickedReminder.getmReminderText());
+                startActivityForResult(intent, REQUESTCODE);
+
+            }
+        });
+
 
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -80,6 +104,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        if (requestCode == REQUESTCODE) {
+            if (resultCode == RESULT_OK) {
+                int positionOfReminder = data.getIntExtra(MainActivity.INTENT_DETAIL_ROW_NUMBER, -1);
+                //-1 being the default value in case of failure. Can be used to detect an issue.
+
+
+                Reminder updatedReminder = new Reminder ( data.getStringExtra(MainActivity.INTENT_DETAIL_REMINDER_TEXT) ) ;
+
+
+                mReminders.set(positionOfReminder, updatedReminder);
+
+                updateUI();
+            }
+        }
+    }
+
 
     private void updateUI() {
         if (mAdapter == null) {
