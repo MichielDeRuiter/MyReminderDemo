@@ -5,26 +5,28 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ListView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ReminderAdapter.ReminderClickListener{
+
 
     //Local variables
     private List<Reminder> mReminders;
-    private ArrayAdapter mAdapter;
-    private ListView mListView;
     private EditText mNewReminderText;
+
+    private ReminderAdapter mAdapter;
+    private RecyclerView mRecyclerView;
+
 
     //Constants used when calling the detail activity
     public static final String INTENT_DETAIL_ROW_NUMBER = "Row number";
@@ -33,47 +35,45 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        //Initialize the local variables
-        mListView = (ListView) findViewById(R.id.listView_main);
-        mNewReminderText = (EditText) findViewById(R.id.editText_main);
 
+        //Initialize the local variables
+        mNewReminderText = (EditText) findViewById(R.id.editText_main);
         mReminders = new ArrayList<Reminder>();
-        mAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, mReminders);
-        mListView.setAdapter(mAdapter);
+
+        mRecyclerView = (RecyclerView) findViewById(R.id.recyclerView);
+
+        LinearLayoutManager mLayoutManager
+                = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+
+        updateUI();
+
+
+        //    mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        //        @Override
+        //        public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+        //           Reminder clickedReminder = (Reminder) adapterView.getItemAtPosition(i);
+
+
+        //    }
+        //   });
 
         //Set the long click listener for reminders in the list in order to remove a reminder
-        mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-                mReminders.remove(i);
-                mAdapter.notifyDataSetChanged();
-                updateUI();
-                return true;
-            }
+        //    mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        //      @Override
+        //     public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
+        //         mReminders.remove(i);
+        //        updateUI();
+        //         return true;
+        //     }
+        //   });
 
 
-
-        });
-
-        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-
-                Reminder clickedReminder = (Reminder) adapterView.getItemAtPosition(i);
-
-                Intent intent = new Intent(MainActivity.this, UpdateActivity.class);
-                intent.putExtra(INTENT_DETAIL_ROW_NUMBER, i);
-                intent.putExtra(INTENT_DETAIL_REMINDER_TEXT, clickedReminder.getmReminderText());
-                startActivityForResult(intent, REQUESTCODE);
-
-            }
-        });
 
 
 
@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-//Get the user text from the textfield
+                //Get the user text from the textfield
                 String text = mNewReminderText.getText().toString();
                 Reminder newReminder = new Reminder(text);
 
@@ -91,8 +91,10 @@ public class MainActivity extends AppCompatActivity {
                     //Add the text to the list (datamodel)
                     mReminders.add(newReminder);
 
-//Tell the adapter that the data set has been modified: the screen will be refreshed.
-                    mAdapter.notifyDataSetChanged();
+
+                    //Tell the adapter that the data set has been modified: the screen will be refreshed.
+                    updateUI();
+
 
                     //Initialize the EditText for the next item
                     mNewReminderText.setText("");
@@ -105,6 +107,18 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+
+    private void updateUI() {
+        if (mAdapter == null) {
+            mAdapter = new ReminderAdapter(this, mReminders);
+            mRecyclerView.setAdapter(mAdapter);
+        } else {
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
+    //Process return parameters
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
@@ -113,24 +127,12 @@ public class MainActivity extends AppCompatActivity {
                 int positionOfReminder = data.getIntExtra(MainActivity.INTENT_DETAIL_ROW_NUMBER, -1);
                 //-1 being the default value in case of failure. Can be used to detect an issue.
 
-
                 Reminder updatedReminder = new Reminder ( data.getStringExtra(MainActivity.INTENT_DETAIL_REMINDER_TEXT) ) ;
-
-
+                // New timestamp: timestamp of update
                 mReminders.set(positionOfReminder, updatedReminder);
-
-                updateUI();
+                mAdapter.notifyDataSetChanged();
+                // or UpdateUI() if this method has been implemented
             }
-        }
-    }
-
-
-    private void updateUI() {
-        if (mAdapter == null) {
-            mAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mReminders);
-            mListView.setAdapter(mAdapter);
-        } else {
-            mAdapter.notifyDataSetChanged();
         }
     }
 
@@ -153,7 +155,24 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_settings) {
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
+
+
+    @Override
+    public void reminderOnClick(Reminder reminder, int position) {
+        Intent intent = new Intent(MainActivity.this, UpdateActivity.class);
+        intent.putExtra(INTENT_DETAIL_ROW_NUMBER, position);
+        intent.putExtra(INTENT_DETAIL_REMINDER_TEXT, reminder.getmReminderText());
+        startActivityForResult(intent, REQUESTCODE);
+    }
+
+    @Override
+    public void reminderOnLongClick(int position) {
+        mReminders.remove(position);
+        mAdapter.notifyItemRemoved(position);
+        mAdapter.notifyItemRangeChanged(position,mReminders.size());
+    }
+
+
 }
